@@ -36,7 +36,7 @@ fi
 last_claude_triggered=0
 last_codex_triggered=0
 
-inotifywait -m -r -e close_write,create,moved_to "${WATCH_DIRS[@]}" --format '%w%f' 2>/dev/null | \
+inotifywait -m -r -e close_write,create,modify,moved_to "${WATCH_DIRS[@]}" --format '%w%f' 2>/dev/null | \
 while read -r filepath; do
     [[ "$filepath" != *.jsonl ]] && continue
 

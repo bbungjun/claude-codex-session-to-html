@@ -36,6 +36,11 @@ class DefaultOutputPathTests(unittest.TestCase):
         self.assertNotIn("/mnt/c/Users/__USERNAME__", claude_converter)
         self.assertNotIn("/mnt/c/Users/__USERNAME__", codex_converter)
 
+    def test_watcher_tracks_codex_jsonl_modifications(self):
+        watcher = (ROOT / "hooks" / "session_watcher.sh").read_text(encoding="utf-8")
+
+        self.assertIn("-e close_write,create,modify,moved_to", watcher)
+
 
 if __name__ == "__main__":
     unittest.main()
