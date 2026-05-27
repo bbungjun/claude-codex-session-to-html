@@ -158,8 +158,76 @@ watcher가 실행 중인데 새 날짜/새 세션 HTML이 생성되지 않으면
 
 생성된 HTML에는 프롬프트, 로컬 경로, 명령 출력, 소스 코드 일부, 토큰/키 같은 민감정보가 평문으로 포함될 수 있습니다. 생성된 세션 HTML을 공개 저장소에 커밋하거나 공유 폴더에 두지 마세요.
 
+## 저장소
+
+https://github.com/bbungjun
+
 <br>
 
-## License
+## 삭제
 
-MIT
+설치했던 것과 동일한 WSL 사용자 계정에서 실행하세요.
+
+```bash
+pkill -f session_watcher.sh 2>/dev/null || true
+rm -f ~/.claude/hooks/session_to_html.py
+rm -f ~/.claude/hooks/codex_to_html.py
+rm -f ~/.claude/hooks/session_watcher.sh
+rm -f ~/.claude/hooks/watcher.log
+```
+
+`~/.bashrc`의 자동 시작 블록을 제거합니다.
+
+```bash
+python3 - <<'PY'
+from pathlib import Path
+
+bashrc = Path.home() / ".bashrc"
+start = "# claude-codex-session-to-html start"
+end = "# claude-codex-session-to-html end"
+
+if bashrc.exists():
+    text = bashrc.read_text()
+    if start in text and end in text:
+        before = text[:text.index(start)].rstrip()
+        after = text[text.index(end) + len(end):].lstrip()
+        bashrc.write_text("\n\n".join(p for p in (before, after) if p) + "\n")
+PY
+```
+
+`~/.claude/settings.json`의 Claude Code Stop hook을 제거합니다.
+
+```bash
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+settings = Path.home() / ".claude" / "settings.json"
+command = f"python3 {Path.home()}/.claude/hooks/session_to_html.py"
+
+if settings.exists():
+    data = json.loads(settings.read_text())
+    hooks = data.get("hooks")
+    if isinstance(hooks, dict):
+        stop_hooks = hooks.get("Stop", [])
+        if isinstance(stop_hooks, list):
+            hooks["Stop"] = [
+                group for group in stop_hooks
+                if not (
+                    isinstance(group, dict)
+                    and any(
+                        isinstance(hook, dict) and hook.get("command") == command
+                        for hook in group.get("hooks", [])
+                    )
+                )
+            ]
+    settings.write_text(json.dumps(data, indent=2) + "\n")
+PY
+```
+
+생성된 HTML 파일은 자동으로 삭제하지 않습니다. 더 이상 필요 없으면 직접 삭제하세요.
+
+```bash
+rm -rf /mnt/c/Users/<username>/ClaudeSessions
+rm -rf /mnt/c/Users/<username>/CodexSessions
+```

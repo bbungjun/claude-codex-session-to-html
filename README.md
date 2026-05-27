@@ -138,6 +138,74 @@ If the watcher is running but a new date/session folder is not being archived, r
 
 Generated HTML files can contain prompts, local paths, command output, source snippets, tokens, keys, or other sensitive data. Do not commit generated session HTML files or place the output folder in a public/shared location.
 
-## License
+## Repository
 
-MIT
+https://github.com/bbungjun
+
+## Uninstall
+
+Run this from the same WSL user account where you installed the tool.
+
+```bash
+pkill -f session_watcher.sh 2>/dev/null || true
+rm -f ~/.claude/hooks/session_to_html.py
+rm -f ~/.claude/hooks/codex_to_html.py
+rm -f ~/.claude/hooks/session_watcher.sh
+rm -f ~/.claude/hooks/watcher.log
+```
+
+Remove the auto-start block from `~/.bashrc`:
+
+```bash
+python3 - <<'PY'
+from pathlib import Path
+
+bashrc = Path.home() / ".bashrc"
+start = "# claude-codex-session-to-html start"
+end = "# claude-codex-session-to-html end"
+
+if bashrc.exists():
+    text = bashrc.read_text()
+    if start in text and end in text:
+        before = text[:text.index(start)].rstrip()
+        after = text[text.index(end) + len(end):].lstrip()
+        bashrc.write_text("\n\n".join(p for p in (before, after) if p) + "\n")
+PY
+```
+
+Remove the Claude Code Stop hook from `~/.claude/settings.json`:
+
+```bash
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+settings = Path.home() / ".claude" / "settings.json"
+command = f"python3 {Path.home()}/.claude/hooks/session_to_html.py"
+
+if settings.exists():
+    data = json.loads(settings.read_text())
+    hooks = data.get("hooks")
+    if isinstance(hooks, dict):
+        stop_hooks = hooks.get("Stop", [])
+        if isinstance(stop_hooks, list):
+            hooks["Stop"] = [
+                group for group in stop_hooks
+                if not (
+                    isinstance(group, dict)
+                    and any(
+                        isinstance(hook, dict) and hook.get("command") == command
+                        for hook in group.get("hooks", [])
+                    )
+                )
+            ]
+    settings.write_text(json.dumps(data, indent=2) + "\n")
+PY
+```
+
+Generated HTML files are not deleted automatically. Remove them manually if you no longer need them:
+
+```bash
+rm -rf /mnt/c/Users/<username>/ClaudeSessions
+rm -rf /mnt/c/Users/<username>/CodexSessions
+```
