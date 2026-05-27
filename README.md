@@ -2,7 +2,7 @@
 
 Automatically save **Claude Code** and **Codex CLI** sessions from WSL as searchable HTML chat logs on Windows.
 
-This is for Windows users who run `claude` or `codex` inside WSL. It watches the session files in your WSL home directory and writes the generated HTML files to a Windows folder such as `C:\Users\<username>\ClaudeSessions`.
+This is for Windows users who run `claude` or `codex` inside WSL. It watches the session files in your WSL home directory and writes the generated HTML files to a Windows folder that you choose during installation.
 
 [한국어 문서](./README.ko.md)
 
@@ -43,8 +43,8 @@ chmod +x install.sh
 ./install.sh
 ```
 
-The installer detects your Windows username. If detection fails, it asks you to enter it manually.
-It also asks for an output base directory. Press Enter to use the default Windows user folder.
+The installer detects your Windows username and Desktop folder. If username detection fails, it asks you to enter it manually.
+It also asks where to store session history/index files. Press Enter to use the detected Desktop `session_history` folder, or enter any WSL or Windows path.
 
 Installed scripts are copied to:
 
@@ -56,24 +56,22 @@ Do not install only as `root` unless you also run Claude Code or Codex CLI as `r
 
 ## Output
 
-By default, HTML files are saved to:
+By default, HTML files are saved under your detected Windows Desktop folder:
 
 ```text
-C:\Users\<username>\ClaudeSessions\
-C:\Users\<username>\CodexSessions\
+<Windows Desktop>\session_history\
 ```
 
-During installation, you can choose a different output base directory. Use a WSL path such as `/mnt/d/AISessions`, or enter a Windows path such as `D:\AISessions` and the installer will convert it when `wslpath` is available.
+During installation, you can choose a different output directory. Use a WSL path such as `/mnt/d/AISessions`, or enter a Windows path such as `D:\AISessions` and the installer will convert it when `wslpath` is available.
 
 ```text
-Output base directory, WSL or Windows path [default: /mnt/c/Users/<username>]:
+Session history/index output directory, WSL or Windows path [default: <detected-desktop>/session_history]:
 ```
 
 For example, entering `/mnt/d/AISessions` or `D:\AISessions` saves files to:
 
 ```text
-D:\AISessions\ClaudeSessions\
-D:\AISessions\CodexSessions\
+D:\AISessions\
 ```
 
 Each session is saved as:
@@ -82,7 +80,7 @@ Each session is saved as:
 <session-uuid>.html
 ```
 
-The selected output paths are written into the installed converter scripts during installation. To change them after installing, rerun `./install.sh` or edit `OUTPUT_DIR` in:
+The selected output path is written into the installed converter scripts during installation. To change it after installing, rerun `./install.sh` or edit `OUTPUT_DIR` in:
 
 ```bash
 ~/.claude/hooks/session_to_html.py
@@ -206,6 +204,5 @@ PY
 Generated HTML files are not deleted automatically. Remove them manually if you no longer need them:
 
 ```bash
-rm -rf /mnt/c/Users/<username>/ClaudeSessions
-rm -rf /mnt/c/Users/<username>/CodexSessions
+rm -rf <selected-output-directory>
 ```

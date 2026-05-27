@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 # ── Config ──────────────────────────────────────────────────────────────────
-OUTPUT_DIR      = Path("/mnt/c/Users/__USERNAME__/ClaudeSessions")
+OUTPUT_DIR      = Path.home() / "session_history"
 MAX_TOOL_CONTENT = 500
 MAX_BUBBLE_TEXT  = 2000
 # ────────────────────────────────────────────────────────────────────────────

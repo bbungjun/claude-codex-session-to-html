@@ -19,8 +19,16 @@ fi
 echo "→ Windows user: $WIN_USER"
 
 # ── 2. 출력 경로 입력 ────────────────────────────────────────────────────────
-DEFAULT_OUTPUT_BASE="/mnt/c/Users/$WIN_USER"
-read -r -p "Output base directory, WSL or Windows path [default: $DEFAULT_OUTPUT_BASE]: " OUTPUT_BASE
+WIN_DESKTOP=$(powershell.exe -NoProfile -Command "[Environment]::GetFolderPath('Desktop')" 2>/dev/null | tr -d '\r' || true)
+DEFAULT_DESKTOP=""
+if [ -n "$WIN_DESKTOP" ] && command -v wslpath > /dev/null 2>&1; then
+    DEFAULT_DESKTOP=$(wslpath -u "$WIN_DESKTOP" 2>/dev/null || true)
+fi
+if [ -z "$DEFAULT_DESKTOP" ]; then
+    DEFAULT_DESKTOP="$HOME"
+fi
+DEFAULT_OUTPUT_BASE="$DEFAULT_DESKTOP/session_history"
+read -r -p "Session history/index output directory, WSL or Windows path [default: $DEFAULT_OUTPUT_BASE]: " OUTPUT_BASE
 OUTPUT_BASE="${OUTPUT_BASE:-$DEFAULT_OUTPUT_BASE}"
 OUTPUT_BASE="${OUTPUT_BASE/#\~/$HOME}"
 if command -v wslpath > /dev/null 2>&1 && [[ "$OUTPUT_BASE" == *\\* || "$OUTPUT_BASE" == *:* ]]; then
@@ -33,8 +41,8 @@ if [ "$OUTPUT_BASE" != "/" ]; then
     OUTPUT_BASE="${OUTPUT_BASE%/}"
 fi
 
-CLAUDE_OUT="$OUTPUT_BASE/ClaudeSessions"
-CODEX_OUT="$OUTPUT_BASE/CodexSessions"
+CLAUDE_OUT="$OUTPUT_BASE"
+CODEX_OUT="$OUTPUT_BASE"
 echo "→ Claude output: $CLAUDE_OUT"
 echo "→ Codex output:  $CODEX_OUT"
 
@@ -64,7 +72,7 @@ from pathlib import Path
 src, dest, output_dir = map(Path, sys.argv[1:])
 text = src.read_text()
 text = text.replace(
-    'OUTPUT_DIR      = Path("/mnt/c/Users/__USERNAME__/ClaudeSessions")',
+    'OUTPUT_DIR      = Path.home() / "session_history"',
     f'OUTPUT_DIR      = Path({json.dumps(str(output_dir))})',
 )
 dest.write_text(text)
@@ -78,7 +86,7 @@ from pathlib import Path
 src, dest, output_dir = map(Path, sys.argv[1:])
 text = src.read_text()
 text = text.replace(
-    'OUTPUT_DIR       = Path("/mnt/c/Users/__USERNAME__/CodexSessions")',
+    'OUTPUT_DIR       = Path.home() / "session_history"',
     f'OUTPUT_DIR       = Path({json.dumps(str(output_dir))})',
 )
 dest.write_text(text)
