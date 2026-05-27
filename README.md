@@ -15,6 +15,8 @@ This is for Windows users who run `claude` or `codex` inside WSL. It watches the
 | Assistant messages in white bubbles | Assistant messages in white bubbles |
 | Expandable tool calls/results | Expandable tool calls/results |
 
+![Claude Code Korean session preview](./assets/claude_html_kor.png)
+
 ## Features
 
 - Archives Claude Code and Codex CLI sessions to local HTML files.
