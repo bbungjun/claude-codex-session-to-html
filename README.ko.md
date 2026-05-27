@@ -1,6 +1,8 @@
 # claude-codex-session-to-html
 
-**Claude Code / Codex CLI** 세션 대화를 검색 가능한 HTML 채팅 로그로 자동 저장하는 WSL용 도구입니다.
+WSL에서 실행하는 **Claude Code / Codex CLI** 세션 대화를 Windows 폴더에 검색 가능한 HTML 채팅 로그로 자동 저장하는 도구입니다.
+
+Windows에서 WSL 안의 `claude` 또는 `codex`를 사용하는 사람을 위한 도구입니다. WSL 홈 디렉터리의 세션 파일을 감시하고, 생성된 HTML은 `C:\Users\<username>\ClaudeSessions` 같은 Windows 폴더에 저장합니다.
 
 [English README](./README.md)
 
@@ -31,6 +33,7 @@
 ## 요구사항
 
 - Windows 11 + WSL2, Ubuntu 계열 환경 권장
+- Claude Code 또는 Codex CLI를 Windows PowerShell/CMD가 아니라 WSL 안에서 실행해야 합니다.
 - Python 3.8+
 - `inotify-tools` (설치 스크립트가 없으면 자동 설치)
 - Claude Code (`claude`) 또는 Codex CLI (`codex`) 중 하나 이상
@@ -39,16 +42,17 @@
 
 ## 설치
 
-`claude` 또는 `codex`를 실행하는 **동일한 WSL 사용자 계정**에서 설치하세요.
+WSL 터미널을 열고, `claude` 또는 `codex`를 실행하는 **동일한 WSL 사용자 계정**에서 설치하세요.
 
 ```bash
-git clone https://github.com/__YOUR_GITHUB__/claude-codex-session-to-html.git
+git clone https://github.com/bbungjun/claude-codex-session-to-html.git
 cd claude-codex-session-to-html
 chmod +x install.sh
 ./install.sh
 ```
 
 설치 중 Windows 사용자 이름을 자동으로 감지합니다. 감지 실패 시 직접 입력합니다.
+또한 HTML 저장 기준 폴더를 물어봅니다. Enter를 누르면 기본 Windows 사용자 폴더를 사용합니다.
 
 설치된 스크립트는 아래 위치에 복사됩니다.
 
@@ -69,22 +73,33 @@ C:\Users\<username>\ClaudeSessions\
 C:\Users\<username>\CodexSessions\
 ```
 
+설치 중 다른 저장 기준 폴더를 입력할 수 있습니다. `/mnt/d/AISessions` 같은 WSL 경로를 쓰거나, `D:\AISessions` 같은 Windows 경로를 입력하면 `wslpath`가 있는 환경에서 자동 변환합니다.
+
+```text
+Output base directory, WSL or Windows path [default: /mnt/c/Users/<username>]:
+```
+
+예를 들어 `/mnt/d/AISessions` 또는 `D:\AISessions`를 입력하면 아래 위치에 저장됩니다.
+
+```text
+D:\AISessions\ClaudeSessions\
+D:\AISessions\CodexSessions\
+```
+
 각 세션은 아래 파일명으로 저장됩니다.
 
 ```text
 <session-uuid>.html
 ```
 
-저장 위치는 설치 시 감지한 Windows 사용자 이름으로 결정됩니다. 설치 스크립트가 `__USERNAME__` 값을 치환해 설치된 변환 스크립트의 `OUTPUT_DIR`에 기록합니다.
+저장 위치는 설치 시 선택한 기준 폴더로 결정됩니다. 설치 스크립트가 설치된 변환 스크립트의 `OUTPUT_DIR`에 선택한 경로를 기록합니다.
 
-설치 후 저장 위치를 바꾸려면 아래 두 파일의 `OUTPUT_DIR` 값을 원하는 WSL 경로로 수정하세요.
+설치 후 저장 위치를 바꾸려면 `./install.sh`를 다시 실행하거나, 아래 두 파일의 `OUTPUT_DIR` 값을 원하는 WSL 경로로 수정하세요.
 
 ```bash
 ~/.claude/hooks/session_to_html.py
 ~/.claude/hooks/codex_to_html.py
 ```
-
-예를 들어 D 드라이브에 저장하려면 `/mnt/d/...` 형태의 경로를 사용할 수 있습니다.
 
 <br>
 

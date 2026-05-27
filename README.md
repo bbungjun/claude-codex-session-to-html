@@ -1,6 +1,8 @@
 # claude-codex-session-to-html
 
-Automatically save **Claude Code** and **Codex CLI** sessions as searchable HTML chat logs on WSL.
+Automatically save **Claude Code** and **Codex CLI** sessions from WSL as searchable HTML chat logs on Windows.
+
+This is for Windows users who run `claude` or `codex` inside WSL. It watches the session files in your WSL home directory and writes the generated HTML files to a Windows folder such as `C:\Users\<username>\ClaudeSessions`.
 
 [한국어 문서](./README.ko.md)
 
@@ -25,22 +27,24 @@ Automatically save **Claude Code** and **Codex CLI** sessions as searchable HTML
 ## Requirements
 
 - Windows 11 + WSL2, tested with Ubuntu-style environments
+- Claude Code or Codex CLI must be run inside WSL, not only from native Windows PowerShell/CMD
 - Python 3.8+
 - `inotify-tools` (`install.sh` installs it when missing)
 - Claude Code (`claude`) or Codex CLI (`codex`)
 
 ## Install
 
-Run the installer from the same WSL user account that runs `claude` or `codex`.
+Open your WSL terminal and run the installer from the same WSL user account that runs `claude` or `codex`.
 
 ```bash
-git clone https://github.com/__YOUR_GITHUB__/claude-codex-session-to-html.git
+git clone https://github.com/bbungjun/claude-codex-session-to-html.git
 cd claude-codex-session-to-html
 chmod +x install.sh
 ./install.sh
 ```
 
 The installer detects your Windows username. If detection fails, it asks you to enter it manually.
+It also asks for an output base directory. Press Enter to use the default Windows user folder.
 
 Installed scripts are copied to:
 
@@ -59,20 +63,31 @@ C:\Users\<username>\ClaudeSessions\
 C:\Users\<username>\CodexSessions\
 ```
 
+During installation, you can choose a different output base directory. Use a WSL path such as `/mnt/d/AISessions`, or enter a Windows path such as `D:\AISessions` and the installer will convert it when `wslpath` is available.
+
+```text
+Output base directory, WSL or Windows path [default: /mnt/c/Users/<username>]:
+```
+
+For example, entering `/mnt/d/AISessions` or `D:\AISessions` saves files to:
+
+```text
+D:\AISessions\ClaudeSessions\
+D:\AISessions\CodexSessions\
+```
+
 Each session is saved as:
 
 ```text
 <session-uuid>.html
 ```
 
-The output path is written into the installed converter scripts during installation. To change it after installing, edit `OUTPUT_DIR` in:
+The selected output paths are written into the installed converter scripts during installation. To change them after installing, rerun `./install.sh` or edit `OUTPUT_DIR` in:
 
 ```bash
 ~/.claude/hooks/session_to_html.py
 ~/.claude/hooks/codex_to_html.py
 ```
-
-For example, use `/mnt/d/...` to save logs to a Windows D: drive location.
 
 ## How It Works
 

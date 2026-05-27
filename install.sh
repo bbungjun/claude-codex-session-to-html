@@ -18,10 +18,27 @@ if [ -z "$WIN_USER" ]; then
 fi
 echo "→ Windows user: $WIN_USER"
 
-CLAUDE_OUT="/mnt/c/Users/$WIN_USER/ClaudeSessions"
-CODEX_OUT="/mnt/c/Users/$WIN_USER/CodexSessions"
+# ── 2. 출력 경로 입력 ────────────────────────────────────────────────────────
+DEFAULT_OUTPUT_BASE="/mnt/c/Users/$WIN_USER"
+read -r -p "Output base directory, WSL or Windows path [default: $DEFAULT_OUTPUT_BASE]: " OUTPUT_BASE
+OUTPUT_BASE="${OUTPUT_BASE:-$DEFAULT_OUTPUT_BASE}"
+OUTPUT_BASE="${OUTPUT_BASE/#\~/$HOME}"
+if command -v wslpath > /dev/null 2>&1 && [[ "$OUTPUT_BASE" == *\\* || "$OUTPUT_BASE" == *:* ]]; then
+    CONVERTED_OUTPUT_BASE=$(wslpath -u "$OUTPUT_BASE" 2>/dev/null || true)
+    if [ -n "$CONVERTED_OUTPUT_BASE" ]; then
+        OUTPUT_BASE="$CONVERTED_OUTPUT_BASE"
+    fi
+fi
+if [ "$OUTPUT_BASE" != "/" ]; then
+    OUTPUT_BASE="${OUTPUT_BASE%/}"
+fi
 
-# ── 2. inotify-tools 확인 ────────────────────────────────────────────────────
+CLAUDE_OUT="$OUTPUT_BASE/ClaudeSessions"
+CODEX_OUT="$OUTPUT_BASE/CodexSessions"
+echo "→ Claude output: $CLAUDE_OUT"
+echo "→ Codex output:  $CODEX_OUT"
+
+# ── 3. inotify-tools 확인 ────────────────────────────────────────────────────
 if ! command -v inotifywait &> /dev/null; then
     echo "→ Installing inotify-tools..."
     sudo apt-get install -y inotify-tools
@@ -29,18 +46,44 @@ else
     echo "→ inotify-tools: already installed"
 fi
 
-# ── 3. hooks 디렉토리 생성 ───────────────────────────────────────────────────
+# ── 4. hooks 디렉토리 생성 ───────────────────────────────────────────────────
 mkdir -p "$HOOKS_DIR"
 mkdir -p "$(dirname "$SETTINGS")"
 mkdir -p "$CLAUDE_OUT"
 mkdir -p "$CODEX_OUT"
 echo "→ Output dirs created"
 
-# ── 4. 스크립트 복사 & 경로 치환 ────────────────────────────────────────────
+# ── 5. 스크립트 복사 & 경로 치환 ────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)/hooks"
 
-sed "s|__USERNAME__|$WIN_USER|g" "$SCRIPT_DIR/session_to_html.py" > "$HOOKS_DIR/session_to_html.py"
-sed "s|__USERNAME__|$WIN_USER|g" "$SCRIPT_DIR/codex_to_html.py"   > "$HOOKS_DIR/codex_to_html.py"
+python3 - "$SCRIPT_DIR/session_to_html.py" "$HOOKS_DIR/session_to_html.py" "$CLAUDE_OUT" <<'PYEOF'
+import json
+import sys
+from pathlib import Path
+
+src, dest, output_dir = map(Path, sys.argv[1:])
+text = src.read_text()
+text = text.replace(
+    'OUTPUT_DIR      = Path("/mnt/c/Users/__USERNAME__/ClaudeSessions")',
+    f'OUTPUT_DIR      = Path({json.dumps(str(output_dir))})',
+)
+dest.write_text(text)
+PYEOF
+
+python3 - "$SCRIPT_DIR/codex_to_html.py" "$HOOKS_DIR/codex_to_html.py" "$CODEX_OUT" <<'PYEOF'
+import json
+import sys
+from pathlib import Path
+
+src, dest, output_dir = map(Path, sys.argv[1:])
+text = src.read_text()
+text = text.replace(
+    'OUTPUT_DIR       = Path("/mnt/c/Users/__USERNAME__/CodexSessions")',
+    f'OUTPUT_DIR       = Path({json.dumps(str(output_dir))})',
+)
+dest.write_text(text)
+PYEOF
+
 cp  "$SCRIPT_DIR/session_watcher.sh"                               "$HOOKS_DIR/session_watcher.sh"
 
 chmod +x "$HOOKS_DIR/session_to_html.py"
@@ -48,7 +91,7 @@ chmod +x "$HOOKS_DIR/codex_to_html.py"
 chmod +x "$HOOKS_DIR/session_watcher.sh"
 echo "→ Scripts installed to $HOOKS_DIR"
 
-# ── 5. Claude Code Stop hook 등록 ───────────────────────────────────────────
+# ── 6. Claude Code Stop hook 등록 ───────────────────────────────────────────
 if [ -f "$SETTINGS" ]; then
     python3 - << PYEOF
 import json
@@ -110,7 +153,7 @@ EOF
     echo "→ settings.json created"
 fi
 
-# ── 6. .bashrc 자동 시작 추가 ───────────────────────────────────────────────
+# ── 7. .bashrc 자동 시작 추가 ───────────────────────────────────────────────
 BASHRC="$HOME/.bashrc"
 MARKER_START="# claude-codex-session-to-html start"
 MARKER_END="# claude-codex-session-to-html end"
@@ -167,7 +210,7 @@ bashrc.write_text(text)
 PYEOF
 echo "→ Auto-start configured in .bashrc"
 
-# ── 7. 즉시 watcher 시작 ────────────────────────────────────────────────────
+# ── 8. 즉시 watcher 시작 ────────────────────────────────────────────────────
 pkill -f session_watcher.sh 2>/dev/null || true
 nohup "$HOOKS_DIR/session_watcher.sh" > "$HOOKS_DIR/watcher.log" 2>&1 &
 disown
@@ -178,8 +221,15 @@ echo "╔═══════════════════════�
 echo "║          Installation complete!      ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
-echo "  Claude sessions → C:\\Users\\$WIN_USER\\ClaudeSessions\\"
-echo "  Codex  sessions → C:\\Users\\$WIN_USER\\CodexSessions\\"
+if command -v wslpath > /dev/null 2>&1; then
+    CLAUDE_DISPLAY=$(wslpath -w "$CLAUDE_OUT" 2>/dev/null || echo "$CLAUDE_OUT")
+    CODEX_DISPLAY=$(wslpath -w "$CODEX_OUT" 2>/dev/null || echo "$CODEX_OUT")
+else
+    CLAUDE_DISPLAY="$CLAUDE_OUT"
+    CODEX_DISPLAY="$CODEX_OUT"
+fi
+echo "  Claude sessions → $CLAUDE_DISPLAY"
+echo "  Codex  sessions → $CODEX_DISPLAY"
 echo ""
 pgrep -f session_watcher.sh > /dev/null && echo "  ✅ Watcher is running" || echo "  ❌ Watcher failed to start"
 echo ""
