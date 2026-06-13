@@ -204,6 +204,18 @@ agent chat bot pipeline 구조를 어디까지 구현했지?
 
 <br>
 
+## 성능 메모
+
+watcher는 기본적으로 3초 debounce를 사용합니다. Claude/Codex가 세션 파일에 아주 자주 기록할 때 HTML과 SQLite index를 매번 재생성하지 않도록 하기 위해서입니다. watcher를 직접 시작할 때 아래처럼 조절할 수 있습니다.
+
+```bash
+SESSION_WATCHER_DEBOUNCE=5 nohup ~/.claude/hooks/session_watcher.sh > ~/.claude/hooks/watcher.log 2>&1 & disown
+```
+
+SQLite index는 모든 메시지를 보관하지만, 전문 검색 대상은 사용자/assistant 메시지로 제한합니다. tool output은 생성된 HTML과 세션 상세에는 남지만 기본 검색에서는 제외됩니다. 또한 변경 없는 세션은 index 쓰기를 건너뛰고, 세션이 길어질 때는 새 메시지만 append합니다.
+
+<br>
+
 ## 문제 해결
 
 ```bash

@@ -4,11 +4,12 @@
 
 CLAUDE_DIR="$HOME/.claude/projects"
 CODEX_DIR="$HOME/.codex/sessions"
-DEBOUNCE=1  # seconds
+DEBOUNCE="${SESSION_WATCHER_DEBOUNCE:-3}"  # seconds
 
 echo "[watcher] started"
 echo "[watcher] Claude: $CLAUDE_DIR"
 echo "[watcher] Codex:  $CODEX_DIR"
+echo "[watcher] Debounce: ${DEBOUNCE}s"
 
 if ! command -v inotifywait &> /dev/null; then
     echo "[watcher] ERROR: inotify-tools not found."

@@ -180,6 +180,16 @@ How far did I get on the agent chat bot pipeline?
 Open the related session HTML.
 ```
 
+## Performance Notes
+
+The watcher uses a 3-second debounce by default so active Claude/Codex sessions do not regenerate HTML and update SQLite on every tiny file write. You can tune it before starting the watcher:
+
+```bash
+SESSION_WATCHER_DEBOUNCE=5 nohup ~/.claude/hooks/session_watcher.sh > ~/.claude/hooks/watcher.log 2>&1 & disown
+```
+
+The SQLite index stores all messages, but full-text search indexes only user and assistant messages. Tool outputs remain visible in the generated HTML and session details, but they are not searched by default. Re-indexing also skips unchanged sessions and appends newly added messages when a session grows.
+
 ## Troubleshooting
 
 ```bash

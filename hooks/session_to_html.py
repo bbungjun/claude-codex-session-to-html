@@ -3,7 +3,7 @@
 Claude Code Session → HTML Converter
 Converts ~/.claude/projects/**/*.jsonl to a KakaoTalk-style HTML chat UI.
 """
-import json, sys
+import json, sys, time
 from datetime import datetime
 from pathlib import Path
 
@@ -12,9 +12,14 @@ if (REPO_ROOT / "session_memory").is_dir():
     sys.path.insert(0, str(REPO_ROOT))
 
 try:
-    from session_memory.indexer import index_session
+    from session_memory.indexer import index_session_record
+    from session_memory.models import MessageRecord, SessionRecord
+    from session_memory.time_utils import parse_timestamp
 except ImportError:
-    index_session = None
+    index_session_record = None
+    MessageRecord = None
+    SessionRecord = None
+    parse_timestamp = None
 
 # ── Config ──────────────────────────────────────────────────────────────────
 OUTPUT_DIR      = Path.home() / "session_history"
@@ -91,6 +96,7 @@ def format_tool_input(name, inp):
 # ── Parse JSONL ──────────────────────────────────────────────────────────────
 messages = []
 parse_errors = 0
+session_cwd = ""
 with open(target_file, "r", encoding="utf-8") as f:
     for line_no, line in enumerate(f, 1):
         line = line.strip()
@@ -99,6 +105,7 @@ with open(target_file, "r", encoding="utf-8") as f:
             obj = json.loads(line)
             msg_type = obj.get("type","")
             ts = obj.get("timestamp","")
+            session_cwd = obj.get("cwd", session_cwd)
             if msg_type == "user":
                 content = obj.get("message",{}).get("content","")
                 if isinstance(content, list):
@@ -304,13 +311,59 @@ html = HTML_TEMPLATE.format(
     filename=target_file.name,
 )
 
+
+def make_index_record(out_file):
+    records = []
+    for m in messages:
+        role = m["role"]
+        timestamp = parse_timestamp(m.get("ts", ""))
+        if role in ("user", "assistant"):
+            text = m.get("text", "").strip()
+            if text:
+                records.append(MessageRecord(role, timestamp, text, len(records)))
+        elif role == "tool_result":
+            for result in m.get("results", []):
+                text = str(result).strip()
+                if text:
+                    records.append(MessageRecord("tool_result", timestamp, text, len(records)))
+
+    started_at = records[0].timestamp if records else ""
+    ended_at = records[-1].timestamp if records else started_at
+    summary = next((record.text[:160] for record in records if record.role == "user"), "")
+    if not summary and records:
+        summary = records[0].text[:160]
+    return SessionRecord(
+        session_id=session_uuid,
+        source="claude",
+        jsonl_path=str(target_file),
+        html_path=str(out_file),
+        cwd=session_cwd,
+        started_at=started_at,
+        ended_at=ended_at,
+        messages=records,
+        summary=summary,
+    )
+
+
 try:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     out_file = OUTPUT_DIR / f"{session_uuid}.html"
     out_file.write_text(html, encoding="utf-8")
-    if index_session:
+    if index_session_record:
         try:
-            index_session("claude", target_file, out_file, OUTPUT_DIR / "index.sqlite")
+            index_start = time.perf_counter()
+            record = make_index_record(out_file)
+            result = index_session_record(record, OUTPUT_DIR / "index.sqlite")
+            elapsed_ms = (time.perf_counter() - index_start) * 1000
+            log(
+                "indexed → {} ({}; {}/{} messages; {:.0f}ms)".format(
+                    OUTPUT_DIR / "index.sqlite",
+                    result.store_result.mode,
+                    result.store_result.inserted_count,
+                    result.store_result.message_count,
+                    elapsed_ms,
+                )
+            )
         except Exception as exc:
             log(f"failed to update index: {exc}")
 except OSError as exc:

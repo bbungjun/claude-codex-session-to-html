@@ -40,6 +40,7 @@ class DefaultOutputPathTests(unittest.TestCase):
         watcher = (ROOT / "hooks" / "session_watcher.sh").read_text(encoding="utf-8")
 
         self.assertIn("-e close_write,create,modify,moved_to", watcher)
+        self.assertIn('DEBOUNCE="${SESSION_WATCHER_DEBOUNCE:-3}"', watcher)
 
     def test_converters_update_sqlite_index_after_html_write(self):
         claude_converter = (ROOT / "hooks" / "session_to_html.py").read_text(
@@ -49,14 +50,16 @@ class DefaultOutputPathTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn("from session_memory.indexer import index_session", claude_converter)
+        self.assertIn("from session_memory.indexer import index_session_record", claude_converter)
+        self.assertIn("from session_memory.models import MessageRecord, SessionRecord", claude_converter)
         self.assertIn(
-            'index_session("claude", target_file, out_file, OUTPUT_DIR / "index.sqlite")',
+            "index_session_record(record, OUTPUT_DIR / \"index.sqlite\")",
             claude_converter,
         )
-        self.assertIn("from session_memory.indexer import index_session", codex_converter)
+        self.assertIn("from session_memory.indexer import index_session_record", codex_converter)
+        self.assertIn("from session_memory.models import MessageRecord, SessionRecord", codex_converter)
         self.assertIn(
-            'index_session("codex", target_file, out_file, OUTPUT_DIR / "index.sqlite")',
+            "index_session_record(record, OUTPUT_DIR / \"index.sqlite\")",
             codex_converter,
         )
 
