@@ -7,6 +7,15 @@ import json, sys
 from datetime import datetime
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if (REPO_ROOT / "session_memory").is_dir():
+    sys.path.insert(0, str(REPO_ROOT))
+
+try:
+    from session_memory.indexer import index_session
+except ImportError:
+    index_session = None
+
 # ── Config ──────────────────────────────────────────────────────────────────
 OUTPUT_DIR      = Path.home() / "session_history"
 MAX_TOOL_CONTENT = 500
@@ -299,6 +308,11 @@ try:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     out_file = OUTPUT_DIR / f"{session_uuid}.html"
     out_file.write_text(html, encoding="utf-8")
+    if index_session:
+        try:
+            index_session("claude", target_file, out_file, OUTPUT_DIR / "index.sqlite")
+        except Exception as exc:
+            log(f"failed to update index: {exc}")
 except OSError as exc:
     log(f"failed to write HTML: {exc}")
     sys.exit(1)

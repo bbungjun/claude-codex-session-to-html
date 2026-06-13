@@ -63,6 +63,10 @@ echo "→ Output dirs created"
 
 # ── 5. 스크립트 복사 & 경로 치환 ────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)/hooks"
+PACKAGE_DIR="$(cd "$(dirname "$0")" && pwd)/session_memory"
+
+rm -rf "$HOOKS_DIR/session_memory"
+cp -R "$PACKAGE_DIR" "$HOOKS_DIR/session_memory"
 
 python3 - "$SCRIPT_DIR/session_to_html.py" "$HOOKS_DIR/session_to_html.py" "$CLAUDE_OUT" <<'PYEOF'
 import json

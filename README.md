@@ -23,8 +23,10 @@ This is for Windows users who run `claude` or `codex` inside WSL. It watches the
 - Watches live JSONL session updates with `inotifywait`.
 - Preserves recent content even if the CLI session is interrupted.
 - Renders messages in a chat-style UI with search, dark mode, and collapsible tool logs.
+- Builds a local `index.sqlite` file for CLI/MCP search and progress recall.
 - Keeps existing Claude Code hooks and adds only the required Stop hook.
-- Uses only Bash and Python standard library code.
+- Uses only Bash and Python standard library code for core HTML/index/CLI features.
+- MCP support is optional and requires the `mcp` Python package only if you use it.
 
 ## Requirements
 
@@ -82,6 +84,14 @@ Each session is saved as:
 <session-uuid>.html
 ```
 
+The same output directory also contains:
+
+```text
+index.sqlite
+```
+
+HTML archive remains the primary visual output. SQLite index enables local search.
+
 The selected output path is written into the installed converter scripts during installation. To change it after installing, rerun `./install.sh` or edit `OUTPUT_DIR` in:
 
 ```bash
@@ -118,6 +128,58 @@ echo '{"session_id":""}' | python3 ~/.claude/hooks/session_to_html.py
 echo '{}' | python3 ~/.claude/hooks/codex_to_html.py
 ```
 
+## CLI Search
+
+CLI search is available without MCP. The installer copies the `session_memory` package to `~/.claude/hooks`, so set `PYTHONPATH` when running it outside the cloned repository.
+
+```bash
+PYTHONPATH="$HOME/.claude/hooks" \
+python3 -m session_memory.cli search pipeline \
+  --db /mnt/c/Users/<you>/Desktop/session_history/index.sqlite
+```
+
+You can also search by rough time phrases:
+
+```bash
+PYTHONPATH="$HOME/.claude/hooks" \
+python3 -m session_memory.cli search "어제 3시 pipeline" \
+  --db /mnt/c/Users/<you>/Desktop/session_history/index.sqlite
+```
+
+For development-progress style questions, use the progress command:
+
+```bash
+PYTHONPATH="$HOME/.claude/hooks" \
+python3 -m session_memory.cli progress \
+  --project agent-chat \
+  --topic pipeline \
+  --db /mnt/c/Users/<you>/Desktop/session_history/index.sqlite
+```
+
+## MCP Server
+
+MCP server requires optional pip install mcp.
+
+```bash
+pip install mcp
+```
+
+Run the local MCP server with the SQLite index created in your output folder:
+
+```bash
+PYTHONPATH="$HOME/.claude/hooks" \
+SESSION_MEMORY_DB=/mnt/c/Users/<you>/Desktop/session_history/index.sqlite \
+python3 -m session_memory.mcp_server
+```
+
+Example questions:
+
+```text
+What did I discuss yesterday at 3 PM?
+How far did I get on the agent chat bot pipeline?
+Open the related session HTML.
+```
+
 ## Troubleshooting
 
 ```bash
@@ -136,7 +198,7 @@ If the watcher is running but a new date/session folder is not being archived, r
 
 ## Security
 
-Generated HTML files can contain prompts, local paths, command output, source snippets, tokens, keys, or other sensitive data. Do not commit generated session HTML files or place the output folder in a public/shared location.
+Generated HTML files can contain prompts, local paths, command output, source snippets, tokens, keys, or other sensitive data. Generated logs and indexes may contain sensitive data. Do not commit generated session HTML files, `index.sqlite`, or place the output folder in a public/shared location.
 
 ## Repository
 

@@ -1,0 +1,4 @@
+{"type":"session_meta","timestamp":"2026-06-12T15:02:00+09:00","payload":{"cwd":"/home/me/agent-chat"}}
+{"type":"event_msg","timestamp":"2026-06-12T15:03:00+09:00","payload":{"type":"user_message","message":"agent chat bot pipeline 구현 어디까지 됐어?"}}
+{"type":"event_msg","timestamp":"2026-06-12T15:04:00+09:00","payload":{"type":"agent_message","message":"message normalization, agent routing, tool dispatch interface까지 구현했습니다. retry policy와 persistence는 남았습니다.","phase":"final"}}
+

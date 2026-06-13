@@ -41,6 +41,31 @@ class DefaultOutputPathTests(unittest.TestCase):
 
         self.assertIn("-e close_write,create,modify,moved_to", watcher)
 
+    def test_converters_update_sqlite_index_after_html_write(self):
+        claude_converter = (ROOT / "hooks" / "session_to_html.py").read_text(
+            encoding="utf-8"
+        )
+        codex_converter = (ROOT / "hooks" / "codex_to_html.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("from session_memory.indexer import index_session", claude_converter)
+        self.assertIn(
+            'index_session("claude", target_file, out_file, OUTPUT_DIR / "index.sqlite")',
+            claude_converter,
+        )
+        self.assertIn("from session_memory.indexer import index_session", codex_converter)
+        self.assertIn(
+            'index_session("codex", target_file, out_file, OUTPUT_DIR / "index.sqlite")',
+            codex_converter,
+        )
+
+    def test_installer_copies_session_memory_package(self):
+        install_script = (ROOT / "install.sh").read_text(encoding="utf-8")
+
+        self.assertIn('cp -R "$PACKAGE_DIR" "$HOOKS_DIR/session_memory"', install_script)
+        self.assertIn('rm -rf "$HOOKS_DIR/session_memory"', install_script)
+
 
 if __name__ == "__main__":
     unittest.main()
