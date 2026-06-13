@@ -44,7 +44,9 @@ def extract_work_items(record: SessionRecord) -> List[WorkItemRecord]:
     evidence = [
         message
         for message in record.messages
-        if _looks_like_development_progress(message.text)
+        if message.role == "assistant"
+        and not _looks_like_tool_payload(message.text)
+        and _looks_like_development_progress(message.text)
     ]
     if not evidence:
         return []
@@ -52,8 +54,17 @@ def extract_work_items(record: SessionRecord) -> List[WorkItemRecord]:
     combined = "\n".join(message.text for message in evidence)
     implemented = _unique(_extract_implemented(combined))
     pending = _unique(_extract_pending(combined))
+    if not implemented and not pending:
+        return []
+
     files = _unique(_extract_files(combined))
-    topics = _extract_topics(combined)
+    topic_context = "\n".join(
+        message.text
+        for message in record.messages
+        if message.role in ("user", "assistant")
+        and not _looks_like_tool_payload(message.text)
+    )
+    topics = _extract_topics(topic_context)
     project = _project_from_record(record, combined)
     status = "in_progress" if pending else ("completed" if implemented else "mentioned")
     summary = _summarize(combined)
@@ -78,6 +89,17 @@ def _looks_like_development_progress(text: str) -> bool:
     return any(hint in lowered for hint in IMPLEMENTED_HINTS + PENDING_HINTS + TOPIC_KEYWORDS)
 
 
+def _looks_like_tool_payload(text: str) -> bool:
+    stripped = text.lstrip()
+    return (
+        stripped.startswith("Wall time:")
+        or stripped.startswith("Output:")
+        or '"type":"text"' in stripped
+        or '"session_id"' in stripped
+        or '"html_path"' in stripped
+    )
+
+
 def _project_from_record(record: SessionRecord, text: str) -> str:
     if record.cwd:
         return Path(record.cwd).name or record.cwd
@@ -94,8 +116,9 @@ def _extract_topics(text: str) -> List[str]:
 def _extract_implemented(text: str) -> List[str]:
     results: List[str] = []
     patterns = [
-        r"([^.。\n]+?)(?:까지\s*)?구현(?:했|했습니다|됨|되어| 완료)?",
+        r"([^.。\n]+?)(?:까지\s*)?구현(?:했|했습니다|했어요|했다|됐|되었습니다|됨|되어| 완료)",
         r"implemented\s+([^.。\n]+)",
+        r"([^.。\n:]+?)\s+implemented",
         r"added\s+([^.。\n]+)",
         r"finished\s+([^.。\n]+)",
     ]
@@ -110,6 +133,7 @@ def _extract_pending(text: str) -> List[str]:
     patterns = [
         r"([^.。\n]+?)(?:는|은|이|가)?\s*(?:아직\s*)?남았(?:습니다|다|어요)?",
         r"(?:pending|remaining|todo)[:\s]+([^.。\n]+)",
+        r"([^.。\n:]+?)\s+pending",
         r"([^.。\n]+?)\s+(?:is|are)\s+pending",
     ]
     for pattern in patterns:
@@ -134,9 +158,17 @@ def _clean_items(items: Iterable[str]) -> List[str]:
     for item in items:
         text = re.sub(r"\s+", " ", item).strip()
         text = re.sub(r"^(했습니다|했습니다\.|은|는|이|가)\s*", "", text)
+        text = _trim_topic_prefix(text)
         if 2 <= len(text) <= 120:
             cleaned.append(text)
     return _unique(cleaned)
+
+
+def _trim_topic_prefix(text: str) -> str:
+    parts = text.split()
+    if len(parts) >= 2 and parts[0].lower().rstrip(":") in TOPIC_KEYWORDS:
+        return " ".join(parts[1:]).strip()
+    return text
 
 
 def _unique(items: Iterable[str]) -> List[str]:
@@ -154,4 +186,3 @@ def _unique(items: Iterable[str]) -> List[str]:
 def _summarize(text: str) -> str:
     compact = re.sub(r"\s+", " ", text).strip()
     return compact[:240]
-
